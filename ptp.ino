@@ -2,9 +2,13 @@
 #include "AsyncUDP.h"
 
 #include "ssidpw.h"
-
+// "ssidpw.h"でconst charの以下二変数を記載してください。
 extern const char * ssid;
 extern const char * password;
+#include "ptp_send.c"
+extern char *ptpmsg();
+
+unsigned char srcUuid[6];
 
 AsyncUDP udp;
  
@@ -50,6 +54,13 @@ void setup()
 void loop()
 {
     delay(1000);
+    char* temp = ptpmsg();
     //Send multicast
-    udp.print("Anyone here?");
+    udp.write((const uint8_t *) temp, 124);
+    Serial.write((const uint8_t *) temp, 124);
+}
+
+void printer(char* str) {
+  Serial.print("Captured: ");
+  Serial.println(str);
 }
