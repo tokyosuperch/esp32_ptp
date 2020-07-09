@@ -30,7 +30,7 @@
    If you'd rather not, just change the below entries to strings with
    the config you want - ie #define UDP_PORT 3333
 */
-#define UDP_PORT CONFIG_EXAMPLE_PORT
+// #define UDP_PORT CONFIG_EXAMPLE_PORT
 
 #define MULTICAST_LOOPBACK CONFIG_EXAMPLE_LOOPBACK
 
@@ -49,6 +49,10 @@ static const char *V4TAG = "mcast-ipv4";
 static const char *V6TAG = "mcast-ipv6";
 #endif
 
+
+int sock = -1;
+
+int port = 319;
 extern int ptp_recv(unsigned char* msg);
 extern char* ptpmsg();
 
@@ -87,7 +91,7 @@ static int socket_add_ipv4_multicast_group(int sock, bool assign_source_if)
         err = -1;
         goto err;
     }
-    ESP_LOGI(TAG, "Configured IPV4 Multicast address %s", inet_ntoa(imreq.imr_multiaddr.s_addr));
+    ESP_LOGI(TAG, "Configured IPV4 Multicast address %s:%d", inet_ntoa(imreq.imr_multiaddr.s_addr), port);
     if (!IP_MULTICAST(ntohl(imreq.imr_multiaddr.s_addr))) {
         ESP_LOGW(V4TAG, "Configured IPV4 multicast address '%s' is not a valid multicast address. This will probably not work.", MULTICAST_IPV4_ADDR);
     }
@@ -119,7 +123,7 @@ static int socket_add_ipv4_multicast_group(int sock, bool assign_source_if)
 static int create_multicast_ipv4_socket()
 {
     struct sockaddr_in saddr = { 0 };
-    int sock = -1;
+    // int sock = -1;
     int err = 0;
 
     sock = socket(PF_INET, SOCK_DGRAM, IPPROTO_IP);
@@ -130,7 +134,7 @@ static int create_multicast_ipv4_socket()
 
     // Bind the socket to any address
     saddr.sin_family = PF_INET;
-    saddr.sin_port = htons(UDP_PORT);
+    saddr.sin_port = htons(port);
     saddr.sin_addr.s_addr = htonl(INADDR_ANY);
     err = bind(sock, (struct sockaddr *)&saddr, sizeof(struct sockaddr_in));
     if (err < 0) {
@@ -194,7 +198,7 @@ static int create_multicast_ipv6_socket()
 
     // Bind the socket to any address
     saddr.sin6_family = AF_INET6;
-    saddr.sin6_port = htons(UDP_PORT);
+    saddr.sin6_port = htons(port);
     bzero(&saddr.sin6_addr.un, sizeof(saddr.sin6_addr.un));
     err = bind(sock, (struct sockaddr *)&saddr, sizeof(struct sockaddr_in6));
     if (err < 0) {
@@ -334,7 +338,7 @@ static void mcast_example_task(void *pvParameters)
         // set destination multicast addresses for sending from these sockets
         struct sockaddr_in sdestv4 = {
             .sin_family = PF_INET,
-            .sin_port = htons(UDP_PORT),
+            .sin_port = htons(port),
         };
         // We know this inet_aton will pass because we did it above already
         inet_aton(MULTICAST_IPV4_ADDR, &sdestv4.sin_addr.s_addr);
@@ -343,7 +347,7 @@ static void mcast_example_task(void *pvParameters)
 #ifdef CONFIG_EXAMPLE_IPV6
         struct sockaddr_in6 sdestv6 = {
             .sin6_family = PF_INET6,
-            .sin6_port = htons(UDP_PORT),
+            .sin6_port = htons(port),
         };
         // We know this inet_aton will pass because we did it above already
         inet6_aton(MULTICAST_IPV6_ADDR, &sdestv6.sin6_addr);
@@ -445,13 +449,13 @@ static void mcast_example_task(void *pvParameters)
                     break;
                 }
 #ifdef CONFIG_EXAMPLE_IPV4_ONLY
-                ((struct sockaddr_in *)res->ai_addr)->sin_port = htons(UDP_PORT);
+                ((struct sockaddr_in *)res->ai_addr)->sin_port = htons(port);
                 inet_ntoa_r(((struct sockaddr_in *)res->ai_addr)->sin_addr, addrbuf, sizeof(addrbuf)-1);
-                ESP_LOGI(TAG, "Sending to IPV4 multicast address %s:%d...",  addrbuf, UDP_PORT);
+                ESP_LOGI(TAG, "Sending to IPV4 multicast address %s:%d...",  addrbuf, port);
 #else
-                ((struct sockaddr_in6 *)res->ai_addr)->sin6_port = htons(UDP_PORT);
+                ((struct sockaddr_in6 *)res->ai_addr)->sin6_port = htons(port);
                 inet6_ntoa_r(((struct sockaddr_in6 *)res->ai_addr)->sin6_addr, addrbuf, sizeof(addrbuf)-1);
-                ESP_LOGI(TAG, "Sending to IPV6 (V4 mapped) multicast address %s port %d (%s)...",  addrbuf, UDP_PORT, CONFIG_EXAMPLE_MULTICAST_IPV4_ADDR);
+                ESP_LOGI(TAG, "Sending to IPV6 (V4 mapped) multicast address %s port %d (%s)...",  addrbuf, port, CONFIG_EXAMPLE_MULTICAST_IPV4_ADDR);
 #endif
                 err = sendto(sock, sendbuf, len, 0, res->ai_addr, res->ai_addrlen);
                 freeaddrinfo(res);
@@ -473,9 +477,9 @@ static void mcast_example_task(void *pvParameters)
                 }
 
                 struct sockaddr_in6 *s6addr = (struct sockaddr_in6 *)res->ai_addr;
-                s6addr->sin6_port = htons(UDP_PORT);
+                s6addr->sin6_port = htons(port);
                 inet6_ntoa_r(s6addr->sin6_addr, addrbuf, sizeof(addrbuf)-1);
-                ESP_LOGI(TAG, "Sending to IPV6 multicast address %s port %d...",  addrbuf, UDP_PORT);
+                ESP_LOGI(TAG, "Sending to IPV6 multicast address %s port %d...",  addrbuf, port);
                 err = sendto(sock, sendbuf, len, 0, res->ai_addr, res->ai_addrlen);
                 freeaddrinfo(res);
                 if (err < 0) {

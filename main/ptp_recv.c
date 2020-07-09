@@ -7,6 +7,9 @@
 #define SDOMAIN_LEN 16
 #define UUID_LEN 6
 
+extern int port;
+extern int sock;
+
 int firstflag = 1;
 unsigned char srcUuid[UUID_LEN];
 unsigned int srcPort;
@@ -67,6 +70,7 @@ int ptp_recv(unsigned char* msg) {
 		// Sync Message
 		ret = sync_msg(msg);
 	} else if (msg[0x20] == 0x02 && msgType == 2) {
+		printf("Follow up\n");
 		ret = followup_msg(msg);
 	} else if (msg[0x20] == 0x03 && msgType == 2) {
 		ret = delay_res(msg);
@@ -126,6 +130,8 @@ int sync_msg(unsigned char* msg) {
 	t1nsec = ts.tv_nsec - sync_ts.tv_nsec;
 	// printf("%.9f\n", t1);
 	// mode = 1;
+	port = 320;
+	close(sock);
 	return 0;
 }
 
@@ -137,7 +143,9 @@ int followup_msg(unsigned char* msg) {
 		}
 	}
 	// associatedSequenceId 0x2a-0x2b
-	mode = 2;
+	port = 319;
+	close(sock);
+	mode = 0;
 	return 0;
 }
 
