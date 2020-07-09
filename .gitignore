@@ -1,1 +1,3 @@
-ssidpw.h
+build/
+sdkconfig
+sdkconfig.old
