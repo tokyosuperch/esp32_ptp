@@ -4,6 +4,9 @@
 #include <unistd.h>
 #include <string.h>
 #include "info.h"
+#include "esp_log.h"
+#include "freertos/FreeRTOS.h"
+#include "freertos/task.h"
 #define SDOMAIN_LEN 16
 #define UUID_LEN 6
 
@@ -24,7 +27,7 @@ long t3sec;
 long t3nsec;
 struct timespec adjusttime;
 // timespec内のtime_t値が小さすぎるときにclock_settimeがエラーを起こすため1日ずらしておく
-int timeslip = (60*60)*24L;
+// int timeslip = (60*60)*24L;
 
 int sync_msg(unsigned char* msg);
 int followup_msg(unsigned char* msg);
@@ -33,6 +36,8 @@ unsigned long long int charToInt(int bytes, ...);
 extern int mode;
 // char subdomain[SDOMAIN_LEN];
 struct clockinfo grandmaster;
+extern void sendapp(); 
+extern int create_multicast_ipv4_socket();
 
 int ptp_recv(unsigned char* msg) {
 
@@ -41,12 +46,16 @@ int ptp_recv(unsigned char* msg) {
 	int ret = 0;
 	// versionPTP 0x00-0x01
 	// この関数はPTPv1用
-	if (msg[0x00] == (char)0 && msg[0x01] == (char)1) {
-		// printf("Received PTPv1 Message!\n");
-	} else {
-		// printf("This is not a PTPv1 Message!\n");
+	if (!(msg[0x00] == (char)0 && msg[0x01] == (char)1)) {
+		ESP_LOGE("PTP", "This is not a PTPv1 Message!");
 		return -1;
 	}
+
+	/* for (int i = 0; i < 128; i++) {
+		printf("%.2x ", (unsigned int)msg[i]);
+		if (i % 8 == 7) printf("\n");
+	}
+	printf("\n"); */
 	// versionNetwork 0x02-0x03
 	// subdomain _DFLT
 	// subdomain[SDOMAIN_LEN];
@@ -70,12 +79,14 @@ int ptp_recv(unsigned char* msg) {
 		// Sync Message
 		ret = sync_msg(msg);
 	} else if (msg[0x20] == 0x02 && msgType == 2) {
-		printf("Follow up\n");
 		ret = followup_msg(msg);
 	} else if (msg[0x20] == 0x03 && msgType == 2) {
 		ret = delay_res(msg);
 		sleep(1);
 		mode = 0;
+		port = 319;
+		close(sock);
+		create_multicast_ipv4_socket();
 	} else {
 		// 未実装
 		// printf("未実装 messageType:%d control:%d\n", msgType, msg[0x20]);
@@ -85,14 +96,14 @@ int ptp_recv(unsigned char* msg) {
 }
 
 int sync_msg(unsigned char* msg) {
+	printf("Received Sync Message\n");
 	if (mode != 0) return -1;
 	// sourceUuid 0x16-0x1B
 	for (int i = 0; i < UUID_LEN; i++) srcUuid[i] = msg[i + 0x16];
-	printf("UUID: %.2x:%.2x:%.2x:%.2x:%.2x:%.2x\n", srcUuid[0], srcUuid[1], srcUuid[2], srcUuid[3], srcUuid[4], srcUuid[5]);
 	// flags 0x22-0x23
 	// originTimeStamp 0x28-0x2F
 	// (seconds) 0x28-0x2B
-	sync_ts.tv_sec = (unsigned long int)charToInt(4, msg[0x28], msg[0x29], msg[0x2a], msg[0x2b]) + timeslip;
+	sync_ts.tv_sec = (unsigned long int)charToInt(4, msg[0x28], msg[0x29], msg[0x2a], msg[0x2b]);
 	// (nanoseconds) 0x2C-0x2F
 	sync_ts.tv_nsec = (unsigned long int)charToInt(4, msg[0x2c], msg[0x2d], msg[0x2e], msg[0x2f]);
 	if (firstflag == 1) {
@@ -129,40 +140,52 @@ int sync_msg(unsigned char* msg) {
 	t1sec = ts.tv_sec - sync_ts.tv_sec;
 	t1nsec = ts.tv_nsec - sync_ts.tv_nsec;
 	// printf("%.9f\n", t1);
-	// mode = 1;
+	mode = 1;
 	port = 320;
 	close(sock);
+	create_multicast_ipv4_socket();
 	return 0;
 }
 
 int followup_msg(unsigned char* msg) {
+	printf("Received Follow_Up Message\n");
 	for (int i = 0; i < UUID_LEN; i++) {
 		if (msg[i + 0x16] != srcUuid[i]) {
-			printf("%d, %d Missmatch\n", (int)msg[i + 0x16], (int)srcUuid[i]);
+			ESP_LOGE("PTP", "%d, %d Missmatch\n", (int)msg[i + 0x16], (int)srcUuid[i]);
 			return -1;
 		}
 	}
-	// associatedSequenceId 0x2a-0x2b
+	mode = 2;
 	port = 319;
 	close(sock);
-	mode = 0;
+	create_multicast_ipv4_socket();
+	sendapp();
+	// associatedSequenceId 0x2a-0x2b
+	mode = 3;
+	port = 320;
+	close(sock);
+	create_multicast_ipv4_socket();
 	return 0;
 }
 
 int delay_res(unsigned char* msg) {
+	printf("Received Delay_Response Message\n");
 	// delayReceiptTimeStamp 0x28-0x2F
 	// (seconds) 0x28-0x2B
-	resp_ts.tv_sec = (unsigned long int)charToInt(4, msg[0x28], msg[0x29], msg[0x2a], msg[0x2b]) + timeslip;
+	resp_ts.tv_sec = (unsigned long int)charToInt(4, msg[0x28], msg[0x29], msg[0x2a], msg[0x2b]);
 	// (nanoseconds) 0x2C-0x2F
 	resp_ts.tv_nsec = charToInt(4, msg[0x2c], msg[0x2d], msg[0x2e], msg[0x2f]);
 	t3sec = resp_ts.tv_sec - ts2.tv_sec;
 	t3nsec = resp_ts.tv_nsec - ts2.tv_nsec;
 	clock_gettime(CLOCK_REALTIME, &adjusttime);
+	printf("time of my clock: %ld.%ld sec\n", adjusttime.tv_sec, adjusttime.tv_nsec);
+	printf("delay response time of master's clock: %ld.%ld sec\n", resp_ts.tv_sec, resp_ts.tv_nsec);
 	adjusttime.tv_sec -= (t1sec - t3sec) / 2;
 	adjusttime.tv_nsec -= (t1nsec - t3nsec) / 2;
 	if (clock_settime(CLOCK_REALTIME, &adjusttime) == -1) perror("setclock");
+	printf("actual time: %ld.%ld sec\n", adjusttime.tv_sec, adjusttime.tv_nsec);
 	double offset = (((t1nsec - t3nsec) / 2) * 0.000000001) + ((t1sec - t3sec) / 2);
-	printf("Syncronizing clock complete!\n");
+	printf("\nSyncronizing clock complete!\n");
 	printf("Offset: %.9f sec\n\n", offset);
 	fflush(stdout);
 	return 0;

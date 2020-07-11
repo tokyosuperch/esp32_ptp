@@ -6,12 +6,12 @@
 #define SDOMAIN_LEN 16
 #define UUID_LEN 6
 
-int seqid = 0x01ff;
+int seqid = 0;
 
 char *ptpmsg();
 char ptpflags(bool PTP_LI61, bool PTP_LI59, bool PTP_BOUNDARY_CLOCK, bool PTP_ASSIST, bool PTP_EXT_SYNC, bool PTP_PARENT_STATS, bool PTP_SYNC_BURST);
 void delay_req(char *temp);
-extern unsigned char srcUuid[UUID_LEN];
+unsigned char Uuid[UUID_LEN] = { (unsigned char)0x24, (unsigned char)0x0a, (unsigned char)0x08, (unsigned char)0x71, (unsigned char)0xd0 };
 extern struct timespec ts;
 struct timespec ts2;
 extern struct clockinfo grandmaster;
@@ -39,7 +39,7 @@ char *ptpmsg() {
 	// IEEE 802.3(Ethernet)(1)
 	temp[0x15] = (char)0x01;
 	// sourceUuid 保留
-	for (int i = 0; i < 6; i++) temp[0x16+i] = srcUuid[i];
+	for (int i = 0; i < 6; i++) temp[0x16+i] = Uuid[i];
 	// sourcePortId 1
 	temp[0x1c] = (char)0x00;
 	temp[0x1d] = (char)0x01;
@@ -55,6 +55,7 @@ char *ptpmsg() {
 	temp[0x23] = ptpflags(false, false, true, true, false, false, false);
 	delay_req(temp);
 	clock_gettime(CLOCK_REALTIME, &ts2);
+	seqid++;
 	return temp;
 }
 
@@ -104,4 +105,5 @@ void delay_req(char *temp) {
 	temp[0x4d] = grandmaster.Preferred;
 	// grandmasterisBoundaryClock 0x4f
 	temp[0x4f] = grandmaster.IsBoundaryClock;
+	for (int i = 80; i < 124; i++) temp[i] = (unsigned char)0;
 }
