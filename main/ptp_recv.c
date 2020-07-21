@@ -137,6 +137,15 @@ int sync_msg(unsigned char* msg) {
 	// printf("originTimeStamp: %ld.%ld seconds\n", sync_ts.tv_sec, sync_ts.tv_nsec);
 	// printf("tv_sec=%ld  tv_nsec=%ld\n\n",ts.tv_sec,ts.tv_nsec);
 	t1sec = ts.tv_sec - sync_ts.tv_sec;
+	if (ts.tv_nsec - sync_ts.tv_nsec < 0) {
+		t1sec -= 1;
+		t1nsec = (ts.tv_nsec - sync_ts.tv_nsec) + 1000000000;
+	} else if (ts.tv_nsec - sync_ts.tv_nsec >= 1000000000) {
+		t1sec += 1;
+		t1nsec = (ts.tv_nsec - sync_ts.tv_nsec) - 1000000000;
+	} else {
+		t1nsec = ts.tv_nsec - sync_ts.tv_nsec;
+	}
 	t1nsec = ts.tv_nsec - sync_ts.tv_nsec;
 	// printf("%.9f\n", t1);
 	mode = 1;
@@ -175,13 +184,29 @@ int delay_res(unsigned char* msg) {
 	// (nanoseconds) 0x2C-0x2F
 	resp_ts.tv_nsec = charToInt(4, msg[0x2c], msg[0x2d], msg[0x2e], msg[0x2f]);
 	t3sec = resp_ts.tv_sec - ts2.tv_sec;
-	t3nsec = resp_ts.tv_nsec - ts2.tv_nsec;
+	if (resp_ts.tv_nsec - ts2.tv_nsec < 0) {
+		t3sec -= 1;
+		t3nsec = resp_ts.tv_nsec - ts2.tv_nsec + 1000000000;
+	} else if(resp_ts.tv_nsec - ts2.tv_nsec >= 1000000000) {
+		t3sec += 1;
+		t3nsec = resp_ts.tv_nsec - ts2.tv_nsec - 1000000000;
+	} else {
+		t3nsec = resp_ts.tv_nsec - ts2.tv_nsec;
+	}
 	clock_gettime(CLOCK_REALTIME, &adjusttime);
 	printf("Delay Request: my time: %ld.%ld sec\n", ts2.tv_sec, ts2.tv_nsec);
 	printf("Delay Response: my time: %ld.%ld sec\n", adjusttime.tv_sec, adjusttime.tv_nsec);
 	printf("delay response time of master's clock: %ld.%ld sec\n", resp_ts.tv_sec, resp_ts.tv_nsec);
 	adjusttime.tv_sec -= (t1sec - t3sec) / 2;
-	adjusttime.tv_nsec -= (t1nsec - t3nsec) / 2;
+	if (adjusttime.tv_nsec - ((t1nsec - t3nsec) / 2) < 0) {
+		adjusttime.tv_sec -= 1;
+		adjusttime.tv_nsec -= ((t1nsec - t3nsec) / 2) + 1000000000;
+	} else if(adjusttime.tv_nsec - ((t1nsec - t3nsec) / 2) >= 1000000000) {
+		adjusttime.tv_sec += 1;
+		adjusttime.tv_nsec -= ((t1nsec - t3nsec) / 2) - 1000000000;
+	} else {
+		adjusttime.tv_nsec -= (t1nsec - t3nsec) / 2;
+	}
 	if (clock_settime(CLOCK_REALTIME, &adjusttime) == -1) perror("setclock");
 	printf("actual time: %ld.%ld sec\n", adjusttime.tv_sec, adjusttime.tv_nsec);
 	double offset = (((t1nsec - t3nsec) / 2) * 0.000000001) + ((t1sec - t3sec) / 2);
