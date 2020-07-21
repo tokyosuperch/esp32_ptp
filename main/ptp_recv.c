@@ -26,8 +26,6 @@ long t1nsec;
 long t3sec;
 long t3nsec;
 struct timespec adjusttime;
-// timespec内のtime_t値が小さすぎるときにclock_settimeがエラーを起こすため1日ずらしておく
-// int timeslip = (60*60)*24L;
 
 int sync_msg(unsigned char* msg);
 int followup_msg(unsigned char* msg);
@@ -96,7 +94,7 @@ int ptp_recv(unsigned char* msg) {
 }
 
 int sync_msg(unsigned char* msg) {
-	printf("Received Sync Message\n");
+	// printf("Received Sync Message\n");
 	if (mode != 0) return -1;
 	// sourceUuid 0x16-0x1B
 	for (int i = 0; i < UUID_LEN; i++) srcUuid[i] = msg[i + 0x16];
@@ -106,10 +104,10 @@ int sync_msg(unsigned char* msg) {
 	sync_ts.tv_sec = (unsigned long int)charToInt(4, msg[0x28], msg[0x29], msg[0x2a], msg[0x2b]);
 	// (nanoseconds) 0x2C-0x2F
 	sync_ts.tv_nsec = (unsigned long int)charToInt(4, msg[0x2c], msg[0x2d], msg[0x2e], msg[0x2f]);
-	if (firstflag == 1) {
+	/* if (firstflag == 1) {
 		if (clock_settime(CLOCK_REALTIME, &sync_ts) == -1) perror("setclock");
 		firstflag = 0;
-	}
+	} */
 	// epochNumber 0x30-0x31
 	// currentUTCOffset 0x32-0x33
 	// grandmasterCommunicationTechnology 0x35
@@ -135,6 +133,7 @@ int sync_msg(unsigned char* msg) {
 	// grandmasterIsBoundaryClock 0x4F
 	grandmaster.IsBoundaryClock = msg[0x4f];
 	clock_gettime(CLOCK_REALTIME, &ts);
+	printf("Sync Message: my time: %ld.%ld sec\n", ts.tv_sec, ts.tv_nsec);
 	// printf("originTimeStamp: %ld.%ld seconds\n", sync_ts.tv_sec, sync_ts.tv_nsec);
 	// printf("tv_sec=%ld  tv_nsec=%ld\n\n",ts.tv_sec,ts.tv_nsec);
 	t1sec = ts.tv_sec - sync_ts.tv_sec;
@@ -178,7 +177,8 @@ int delay_res(unsigned char* msg) {
 	t3sec = resp_ts.tv_sec - ts2.tv_sec;
 	t3nsec = resp_ts.tv_nsec - ts2.tv_nsec;
 	clock_gettime(CLOCK_REALTIME, &adjusttime);
-	printf("time of my clock: %ld.%ld sec\n", adjusttime.tv_sec, adjusttime.tv_nsec);
+	printf("Delay Request: my time: %ld.%ld sec\n", ts2.tv_sec, ts2.tv_nsec);
+	printf("Delay Response: my time: %ld.%ld sec\n", adjusttime.tv_sec, adjusttime.tv_nsec);
 	printf("delay response time of master's clock: %ld.%ld sec\n", resp_ts.tv_sec, resp_ts.tv_nsec);
 	adjusttime.tv_sec -= (t1sec - t3sec) / 2;
 	adjusttime.tv_nsec -= (t1nsec - t3nsec) / 2;

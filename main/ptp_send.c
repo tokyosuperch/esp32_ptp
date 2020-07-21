@@ -54,7 +54,7 @@ char *ptpmsg() {
 	temp[0x22] = (char)0x00;
 	temp[0x23] = ptpflags(false, false, true, true, false, false, false);
 	delay_req(temp);
-	clock_gettime(CLOCK_REALTIME, &ts2);
+	// clock_gettime(CLOCK_REALTIME, &ts2);
 	seqid++;
 	return temp;
 }
@@ -78,12 +78,6 @@ char ptpflags(bool PTP_LI61, bool PTP_LI59, bool PTP_BOUNDARY_CLOCK, bool PTP_AS
 }
 
 void delay_req(char *temp) {
-	clock_gettime(CLOCK_REALTIME, &ts);
-	// originTimestamp (seconds) 0x28-0x2b
-	// printf("tv_sec=%ld  tv_nsec=%ld\n\n",ts.tv_sec,ts.tv_nsec);
-	for (int i = 3; i >= 0; i--) temp[0x28+(3-i)] = (unsigned char)(ts.tv_sec >> (i * 8)) % 256;
-	// originTimestamp (nanoseconds) 0x2c-0x2f
-	for (int i = 3; i >= 0; i--) temp[0x2c+(3-i)] = (unsigned char)(ts.tv_nsec >> (i * 8)) % 256;
 	// epochNumber 0x30-0x31
 	// currentUTCOffset 0x32-0x33
 	// grandmasterCommunicationTechnology 0x35
@@ -106,4 +100,10 @@ void delay_req(char *temp) {
 	// grandmasterisBoundaryClock 0x4f
 	temp[0x4f] = grandmaster.IsBoundaryClock;
 	for (int i = 80; i < 124; i++) temp[i] = (unsigned char)0;
+	clock_gettime(CLOCK_REALTIME, &ts2);
+	// originTimestamp (seconds) 0x28-0x2b
+	// printf("tv_sec=%ld  tv_nsec=%ld\n\n",ts.tv_sec,ts.tv_nsec);
+	for (int i = 3; i >= 0; i--) temp[0x28 + (3 - i)] = (unsigned char)(ts2.tv_sec >> (i * 8)) % 256;
+	// originTimestamp (nanoseconds) 0x2c-0x2f
+	for (int i = 3; i >= 0; i--) temp[0x2c + (3 - i)] = (unsigned char)(ts2.tv_nsec >> (i * 8)) % 256;
 }
