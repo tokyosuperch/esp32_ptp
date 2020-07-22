@@ -26,6 +26,7 @@ long t1nsec;
 long t3sec;
 long t3nsec;
 struct timespec adjusttime;
+struct timespec receivetime;
 
 int sync_msg(unsigned char* msg);
 int followup_msg(unsigned char* msg);
@@ -156,6 +157,7 @@ int sync_msg(unsigned char* msg) {
 }
 
 int followup_msg(unsigned char* msg) {
+	if (mode != 1) return -1;
 	printf("Received Follow_Up Message\n");
 	for (int i = 0; i < UUID_LEN; i++) {
 		if (msg[i + 0x16] != srcUuid[i]) {
@@ -194,20 +196,24 @@ int delay_res(unsigned char* msg) {
 		t3nsec = resp_ts.tv_nsec - ts2.tv_nsec;
 	}
 	clock_gettime(CLOCK_REALTIME, &adjusttime);
-	printf("Delay Request: my time: %ld.%ld sec\n", ts2.tv_sec, ts2.tv_nsec);
-	printf("Delay Response: my time: %ld.%ld sec\n", adjusttime.tv_sec, adjusttime.tv_nsec);
-	printf("delay response time of master's clock: %ld.%ld sec\n", resp_ts.tv_sec, resp_ts.tv_nsec);
+	receivetime.tv_sec = adjusttime.tv_sec;
+	receivetime.tv_nsec = adjusttime.tv_nsec;
 	adjusttime.tv_sec -= (t1sec - t3sec) / 2;
 	if (adjusttime.tv_nsec - ((t1nsec - t3nsec) / 2) < 0) {
 		adjusttime.tv_sec -= 1;
-		adjusttime.tv_nsec -= ((t1nsec - t3nsec) / 2) + 1000000000;
-	} else if(adjusttime.tv_nsec - ((t1nsec - t3nsec) / 2) >= 1000000000) {
-		adjusttime.tv_sec += 1;
 		adjusttime.tv_nsec -= ((t1nsec - t3nsec) / 2) - 1000000000;
+	} else if (adjusttime.tv_nsec - ((t1nsec - t3nsec) / 2) >= 1000000000) {
+		adjusttime.tv_sec += 1;
+		adjusttime.tv_nsec -= ((t1nsec - t3nsec) / 2) + 1000000000;
 	} else {
 		adjusttime.tv_nsec -= (t1nsec - t3nsec) / 2;
 	}
 	if (clock_settime(CLOCK_REALTIME, &adjusttime) == -1) perror("setclock");
+	printf("Sync: %ld.%09ld sec\n", sync_ts.tv_sec, sync_ts.tv_nsec);
+	printf("Delay Request: my time: %ld.%09ld sec\n", ts2.tv_sec, ts2.tv_nsec);
+	printf("Delay Response: my time: %ld.%09ld sec\n", receivetime.tv_sec, receivetime.tv_nsec);
+	printf("delay response time of master's clock: %ld.%09ld sec\n", resp_ts.tv_sec, resp_ts.tv_nsec);
+	printf("t2-t1: %ld.%09ld sec\n", t1sec, t1nsec);
 	printf("actual time: %ld.%ld sec\n", adjusttime.tv_sec, adjusttime.tv_nsec);
 	double offset = (((t1nsec - t3nsec) / 2) * 0.000000001) + ((t1sec - t3sec) / 2);
 	printf("\nSyncronizing clock complete!\n");
