@@ -91,7 +91,7 @@ static int socket_add_ipv4_multicast_group(int sock, bool assign_source_if)
 		err = -1;
 		goto err;
 	}
-	ESP_LOGI(TAG, "Configured IPV4 Multicast address %s:%d", inet_ntoa(imreq.imr_multiaddr.s_addr), port);
+	// ESP_LOGI(TAG, "Configured IPV4 Multicast address %s:%d", inet_ntoa(imreq.imr_multiaddr.s_addr), port);
 	if (!IP_MULTICAST(ntohl(imreq.imr_multiaddr.s_addr))) {
 		ESP_LOGW(V4TAG, "Configured IPV4 multicast address '%s' is not a valid multicast address. This will probably not work.", MULTICAST_IPV4_ADDR);
 	}
@@ -399,7 +399,7 @@ static void mcast_example_task(void* pvParameters)
 						inet6_ntoa_r(raddr.sin6_addr, raddr_name, sizeof(raddr_name) - 1);
 					}
 #endif
-					ESP_LOGI(TAG, "received %d bytes from %s:", len, raddr_name);
+					// ESP_LOGI(TAG, "received %d bytes from %s:", len, raddr_name);
 
 					recvbuf[len] = 0; // Null-terminate whatever we received and treat like a string...
 					// ESP_LOGI(TAG, "%s", recvbuf);
@@ -543,7 +543,7 @@ void sendapp() { // s == 0
 #ifdef CONFIG_EXAMPLE_IPV4_ONLY
 	((struct sockaddr_in*)res->ai_addr)->sin_port = htons(port);
 	inet_ntoa_r(((struct sockaddr_in*)res->ai_addr)->sin_addr, addrbuf, sizeof(addrbuf) - 1);
-	ESP_LOGI(TAG, "Sending to IPV4 multicast address %s:%d...", addrbuf, port);
+	// ESP_LOGI(TAG, "Sending to IPV4 multicast address %s:%d...", addrbuf, port);
 #else
 	((struct sockaddr_in6*)res->ai_addr)->sin6_port = htons(port);
 	inet6_ntoa_r(((struct sockaddr_in6*)res->ai_addr)->sin6_addr, addrbuf, sizeof(addrbuf) - 1);

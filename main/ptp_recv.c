@@ -46,7 +46,7 @@ int ptp_recv(unsigned char* msg) {
 	// versionPTP 0x00-0x01
 	// この関数はPTPv1用
 	if (!(msg[0x00] == (char)0 && msg[0x01] == (char)1)) {
-		ESP_LOGE("PTP", "This is not a PTPv1 Message!");
+		// ESP_LOGE("PTP", "This is not a PTPv1 Message!");
 		return -1;
 	}
 
@@ -134,19 +134,9 @@ int sync_msg(unsigned char* msg) {
 	// grandmasterIsBoundaryClock 0x4F
 	grandmaster.IsBoundaryClock = msg[0x4f];
 	clock_gettime(CLOCK_REALTIME, &ts);
-	printf("Sync Message: my time: %ld.%ld sec\n", ts.tv_sec, ts.tv_nsec);
+	// printf("Sync Message: my time: %ld.%ld sec\n", ts.tv_sec, ts.tv_nsec);
 	// printf("originTimeStamp: %ld.%ld seconds\n", sync_ts.tv_sec, sync_ts.tv_nsec);
-	// printf("tv_sec=%ld  tv_nsec=%ld\n\n",ts.tv_sec,ts.tv_nsec);
 	t1sec = ts.tv_sec - sync_ts.tv_sec;
-	if (ts.tv_nsec - sync_ts.tv_nsec < 0) {
-		t1sec -= 1;
-		t1nsec = (ts.tv_nsec - sync_ts.tv_nsec) + 1000000000;
-	} else if (ts.tv_nsec - sync_ts.tv_nsec >= 1000000000) {
-		t1sec += 1;
-		t1nsec = (ts.tv_nsec - sync_ts.tv_nsec) - 1000000000;
-	} else {
-		t1nsec = ts.tv_nsec - sync_ts.tv_nsec;
-	}
 	t1nsec = ts.tv_nsec - sync_ts.tv_nsec;
 	// printf("%.9f\n", t1);
 	mode = 1;
@@ -157,8 +147,7 @@ int sync_msg(unsigned char* msg) {
 }
 
 int followup_msg(unsigned char* msg) {
-	if (mode != 1) return -1;
-	printf("Received Follow_Up Message\n");
+	// printf("Received Follow_Up Message\n");
 	for (int i = 0; i < UUID_LEN; i++) {
 		if (msg[i + 0x16] != srcUuid[i]) {
 			ESP_LOGE("PTP", "%d, %d Missmatch\n", (int)msg[i + 0x16], (int)srcUuid[i]);
@@ -179,22 +168,14 @@ int followup_msg(unsigned char* msg) {
 }
 
 int delay_res(unsigned char* msg) {
-	printf("Received Delay_Response Message\n");
+	// printf("Received Delay_Response Message\n");
 	// delayReceiptTimeStamp 0x28-0x2F
 	// (seconds) 0x28-0x2B
 	resp_ts.tv_sec = (unsigned long int)charToInt(4, msg[0x28], msg[0x29], msg[0x2a], msg[0x2b]);
 	// (nanoseconds) 0x2C-0x2F
 	resp_ts.tv_nsec = charToInt(4, msg[0x2c], msg[0x2d], msg[0x2e], msg[0x2f]);
 	t3sec = resp_ts.tv_sec - ts2.tv_sec;
-	if (resp_ts.tv_nsec - ts2.tv_nsec < 0) {
-		t3sec -= 1;
-		t3nsec = resp_ts.tv_nsec - ts2.tv_nsec + 1000000000;
-	} else if(resp_ts.tv_nsec - ts2.tv_nsec >= 1000000000) {
-		t3sec += 1;
-		t3nsec = resp_ts.tv_nsec - ts2.tv_nsec - 1000000000;
-	} else {
-		t3nsec = resp_ts.tv_nsec - ts2.tv_nsec;
-	}
+	t3nsec = resp_ts.tv_nsec - ts2.tv_nsec;
 	clock_gettime(CLOCK_REALTIME, &adjusttime);
 	receivetime.tv_sec = adjusttime.tv_sec;
 	receivetime.tv_nsec = adjusttime.tv_nsec;
@@ -209,15 +190,21 @@ int delay_res(unsigned char* msg) {
 		adjusttime.tv_nsec -= (t1nsec - t3nsec) / 2;
 	}
 	if (clock_settime(CLOCK_REALTIME, &adjusttime) == -1) perror("setclock");
-	printf("Sync: %ld.%09ld sec\n", sync_ts.tv_sec, sync_ts.tv_nsec);
-	printf("Delay Request: my time: %ld.%09ld sec\n", ts2.tv_sec, ts2.tv_nsec);
-	printf("Delay Response: my time: %ld.%09ld sec\n", receivetime.tv_sec, receivetime.tv_nsec);
-	printf("delay response time of master's clock: %ld.%09ld sec\n", resp_ts.tv_sec, resp_ts.tv_nsec);
-	printf("t2-t1: %ld.%09ld sec\n", t1sec, t1nsec);
-	printf("actual time: %ld.%ld sec\n", adjusttime.tv_sec, adjusttime.tv_nsec);
+	// printf("Sync: %ld.%09ld sec\n", sync_ts.tv_sec, sync_ts.tv_nsec);
+	// printf("Delay Request: my time: %ld.%09ld sec\n", ts2.tv_sec, ts2.tv_nsec);
+	// printf("Delay Response: my time: %ld.%09ld sec\n", receivetime.tv_sec, receivetime.tv_nsec);
+	// printf("delay response time of master's clock: %ld.%09ld sec\n", resp_ts.tv_sec, resp_ts.tv_nsec);
+	// printf("t2-t1: %ld.%09ld sec\n", t1sec, t1nsec);
+	// printf("actual time: %ld.%09ld sec\n", adjusttime.tv_sec, adjusttime.tv_nsec);
+	double t_ms = t1nsec * 0.000000001 + t1sec;
+	double t_sm = t3nsec * 0.000000001 + t3sec;
+	double meanPathDelay = (((t1nsec + t3nsec) / 2) * 0.000000001) + ((t1sec + t3sec) / 2);
 	double offset = (((t1nsec - t3nsec) / 2) * 0.000000001) + ((t1sec - t3sec) / 2);
-	printf("\nSyncronizing clock complete!\n");
-	printf("Offset: %.9f sec\n\n", offset);
+	// printf("\nSyncronizing clock complete!\n");
+	printf("%.9f,", t_ms);
+	printf("%.9f,", t_sm);
+	printf("%.9f,", meanPathDelay);
+	printf("%.9f\n", offset);
 	fflush(stdout);
 	return 0;
 }
