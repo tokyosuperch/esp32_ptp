@@ -2,6 +2,7 @@
 #include <stdbool.h>
 #include <time.h>
 #include <stdio.h>
+#include <unistd.h>
 #include "info.h"
 #define SDOMAIN_LEN 16
 #define UUID_LEN 6
@@ -15,6 +16,8 @@ unsigned char Uuid[UUID_LEN] = { (unsigned char)0x24, (unsigned char)0x0a, (unsi
 extern struct timespec ts;
 struct timespec ts2;
 extern struct clockinfo grandmaster;
+extern struct clockinfo requestingSource;
+extern int mode;
 
 char *ptpmsg() {
 	
@@ -106,4 +109,85 @@ void delay_req(char *temp) {
 	for (int i = 3; i >= 0; i--) temp[0x28 + (3 - i)] = (unsigned char)(ts2.tv_sec >> (i * 8)) % 256;
 	// originTimestamp (nanoseconds) 0x2c-0x2f
 	for (int i = 3; i >= 0; i--) temp[0x2c + (3 - i)] = (unsigned char)(ts2.tv_nsec >> (i * 8)) % 256;
+}
+
+void gm_sync(char* temp) {
+	// messageType Event Message(1)
+	temp[0x14] = (char)0x01;
+	// control Sync Message(0)
+	temp[0x20] = (char)0x00;
+	clock_gettime(CLOCK_REALTIME, &ts);
+	// flags 0x22-0x23
+	temp[0x23] = (char)0x0c;
+	// originTimestamp (seconds) 0x28-0x2b
+	// printf("tv_sec=%ld  tv_nsec=%ld\n\n",ts.tv_sec,ts.tv_nsec);
+	for (int i = 3; i >= 0; i--) temp[0x28 + (3 - i)] = (unsigned char)(ts.tv_sec >> (i * 8)) % 256;
+	// originTimestamp (nanoseconds) 0x2c-0x2f
+	for (int i = 3; i >= 0; i--) temp[0x2c + (3 - i)] = (unsigned char)(ts.tv_nsec >> (i * 8)) % 256;
+	// epochNumber 0x30-0x31
+	// currentUTCOffset 0x32-0x33
+	// grandmasterCommunicationTechnology 0x35
+	temp[0x35] = grandmaster.CommunicationTechnology;
+	// grandmasterClockUuid 0x36-0x3B
+	for (int i = 0; i < UUID_LEN; i++) temp[0x36 + i] = grandmaster.ClockUuid[i];
+	// grandmasterPortId 0x3c-0x3d
+	for (int i = 1; i >= 0; i--) temp[0x3c + (1 - i)] = (unsigned char)(grandmaster.PortId >> (i * 8)) % 256;
+	// grandmasterSequenceId 0x3e-0x3f
+	for (int i = 1; i >= 0; i--) temp[62 + (1 - i)] = (unsigned char)(grandmaster.SequenceId >> (i * 8)) % 256;
+	// grandmasterClockStratum 0x43
+	temp[0x43] = grandmaster.ClockStratum;
+	// grandmasterClockIdentifier 0x44-0x47
+	for (int i = 0; i < 4; i++) temp[0x44 + i] = (unsigned char)grandmaster.ClockIdentifier[i];
+	// grandmasterClockVariance 0x4A-0x4B
+	for (int i = 1; i >= 0; i--) temp[0x4a + (1 - i)] = (unsigned char)(grandmaster.ClockVariance >> (i * 8)) % 256;
+	// grandmasterPreferred 0x4D
+	temp[0x4d] = grandmaster.Preferred;
+	// grandmasterIsBoundaryClock 0x4F
+	temp[0x4f] = grandmaster.IsBoundaryClock;
+	if (mode != 3) mode = 1;
+}
+
+void gm_followup(char* temp) {
+	// messageType General Message(2)
+	temp[0x14] = (char)0x02;
+	// control Follow_Up Message(2)
+	temp[0x20] = (char)0x02;
+	// flags 0x22-0x23
+	temp[0x23] = (char)0x0c;
+	clock_gettime(CLOCK_REALTIME, &ts);
+	// associatedSequenceId 0x2a-0x2b
+	for (int i = 1; i >= 0; i--) temp[0x2a + (1 - i)] = (unsigned char)(grandmaster.SequenceId >> (i * 8)) % 256;
+	// preciseoriginTimestamp (seconds) 0x2c-0x2f
+	// printf("tv_sec=%ld  tv_nsec=%ld\n\n",ts.tv_sec,ts.tv_nsec);
+	for (int i = 3; i >= 0; i--) temp[0x2c + (3 - i)] = (unsigned char)(ts.tv_sec >> (i * 8)) % 256;
+	// preciseoriginTimestamp (nanoseconds) 0x30-0x33
+	for (int i = 3; i >= 0; i--) temp[0x30 + (3 - i)] = (unsigned char)(ts.tv_nsec >> (i * 8)) % 256;
+	if (mode != 3) {
+		mode = 0;
+		usleep(200000);
+	}
+	grandmaster.SequenceId++;
+}
+
+void gm_delayres(char* temp) {
+	// messageType General Message(2)
+	temp[0x14] = (char)0x02;
+	// control Delay_Resp Message(3)
+	temp[0x20] = (char)0x03;
+	// flags 0x22-0x23
+	temp[0x23] = (char)0x0c;
+	clock_gettime(CLOCK_REALTIME, &ts);
+	// delayReceiptTimestamp(seconds) 0x28-0x2b
+	for (int i = 3; i >= 0; i--) temp[0x28 + (3 - i)] = (unsigned char)(ts.tv_sec >> (i * 8)) % 256;
+	// originTimestamp (nanoseconds) 0x2c-0x2f
+	for (int i = 3; i >= 0; i--) temp[0x2c + (3 - i)] = (unsigned char)(ts.tv_nsec >> (i * 8)) % 256;
+	// requestingSourceCommunicationTechnology 0x31
+	temp[0x31] = requestingSource.CommunicationTechnology;
+	// requestingSourceUuid 0x32-0x37
+	for (int i = 0; i < UUID_LEN; i++) temp[0x32 + i] = requestingSource.ClockUuid[i];
+	// requestingSourcePortId 0x38-0x39
+	for (int i = 1; i >= 0; i--) temp[0x38 + (1 - i)] = (unsigned char)(requestingSource.PortId >> (i * 8)) % 256;
+	// requestingSourceSequenceId 0x3a-0x3b
+	for (int i = 1; i >= 0; i--) temp[0x3a + (1 - i)] = (unsigned char)(requestingSource.SequenceId >> (i * 8)) % 256;
+	mode = 0;
 }

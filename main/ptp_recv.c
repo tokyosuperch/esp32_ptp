@@ -35,6 +35,7 @@ unsigned long long int charToInt(int bytes, ...);
 extern int mode;
 // char subdomain[SDOMAIN_LEN];
 struct clockinfo grandmaster;
+struct clockinfo requestingSource;
 extern void sendapp(); 
 extern int create_multicast_ipv4_socket();
 
@@ -221,4 +222,15 @@ unsigned long long int charToInt(int bytes, ...) {
 	va_end(list);
 
 	return temp;
+}
+
+void gm_delayreq(unsigned char* msg) {
+	// sourceCommunicationTechnology 0x15
+	requestingSource.CommunicationTechnology = msg[0x15];
+	// sourceUuid 0x16-0x1B
+	for (int i = 0; i < UUID_LEN; i++) requestingSource.ClockUuid[i] = msg[0x16 + i];
+	// sourcePortId 0x1C-0x1D
+	requestingSource.PortId = charToInt(2, msg[0x1c], msg[0x1d]);
+	// sequenceId 0x1E-0x1F
+	requestingSource.SequenceId = (int)charToInt(2, msg[0x1e], msg[0x1f]);
 }

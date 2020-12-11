@@ -23,6 +23,7 @@
 #include "lwip/sockets.h"
 #include "lwip/sys.h"
 #include <lwip/netdb.h>
+#include <unistd.h>
 
 /* The examples use simple configuration that you can set via
    project configuration.
@@ -54,6 +55,7 @@ int sock = -1;
 int port = 319;
 extern int ptp_recv(unsigned char* msg);
 extern char* ptpmsg();
+void sendapp();
 
 // ÉÇÅ[Éh
 // 0: ë“ã@
@@ -351,7 +353,11 @@ static void mcast_example_task(void *pvParameters)
         // We know this inet_aton will pass because we did it above already
         inet6_aton(MULTICAST_IPV6_ADDR, &sdestv6.sin6_addr);
 #endif
-
+        while (true) {
+            sendapp();
+            ESP_LOGI(TAG, "Send Completed\n");
+            usleep(1000000);
+        }
         // Loop waiting for UDP received, and sending UDP packets if we don't
         // see any.
         int err = 1;
