@@ -23,7 +23,7 @@
 #include "lwip/sockets.h"
 #include "lwip/sys.h"
 #include <lwip/netdb.h>
-#include <unistd.h>
+#include "info.h"
 
 /* The examples use simple configuration that you can set via
    project configuration.
@@ -55,7 +55,11 @@ int sock = -1;
 int port = 319;
 extern int ptp_recv(unsigned char* msg);
 extern char* ptpmsg();
+unsigned char srcUuid[6];
 void sendapp();
+extern struct clockinfo grandmaster;
+struct clockinfo gminit();
+int isinit = 0;
 
 // ÉÇÅ[Éh
 // 0: ë“ã@
@@ -356,7 +360,6 @@ static void mcast_example_task(void *pvParameters)
         while (true) {
             sendapp();
             ESP_LOGI(TAG, "Send Completed\n");
-            usleep(1000000);
         }
         // Loop waiting for UDP received, and sending UDP packets if we don't
         // see any.
@@ -504,6 +507,13 @@ void sendapp() { // s == 0
                 // Timeout passed with no incoming data, so send something!
                 // static int send_count;
                 // const char sendfmt[] = "Multicast #%d sent by ESP32\n";
+    srcUuid[0] = 0x24;
+    srcUuid[1] = 0x0a;
+    srcUuid[2] = 0xc4;
+    srcUuid[3] = 0x08;
+    srcUuid[4] = 0x69;
+    srcUuid[5] = 0x98;
+    if (isinit == 0) grandmaster = gminit();
     char sendbuf[128];
     char addrbuf[32] = { 0 };
     // int len = snprintf(sendbuf, sizeof(sendbuf), ptpmsg(), send_count++);
@@ -596,4 +606,22 @@ void app_main(void)
     ESP_ERROR_CHECK(example_connect());
 
     xTaskCreate(&mcast_example_task, "mcast_task", 4096, NULL, 5, NULL);
+}
+
+struct clockinfo gminit() {
+    struct clockinfo temp;
+    temp.CommunicationTechnology = (unsigned char)0x01; // Ethernet(1);
+    strcpy((char*)temp.ClockUuid, (char*)srcUuid);
+    temp.ClockStratum = (unsigned char)2;
+    temp.PortId = (unsigned int)320;
+    temp.SequenceId = (unsigned int)0;
+    temp.ClockIdentifier[0] = 'N';
+    temp.ClockIdentifier[1] = 'T';
+    temp.ClockIdentifier[2] = 'P';
+    temp.ClockIdentifier[3] = '\0';
+    temp.ClockVariance = -4000;
+    temp.Preferred = (unsigned char)0;
+    temp.IsBoundaryClock = (unsigned char)0x01;
+    isinit = 1;
+    return temp;
 }

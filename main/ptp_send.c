@@ -3,15 +3,20 @@
 #include <time.h>
 #include <stdio.h>
 #include <unistd.h>
+#include <string.h>
 #include "info.h"
 #define SDOMAIN_LEN 16
 #define UUID_LEN 6
 
 int seqid = 0;
+extern int port;
 
 char *ptpmsg();
 char ptpflags(bool PTP_LI61, bool PTP_LI59, bool PTP_BOUNDARY_CLOCK, bool PTP_ASSIST, bool PTP_EXT_SYNC, bool PTP_PARENT_STATS, bool PTP_SYNC_BURST);
 void delay_req(char *temp);
+void gm_sync(char* temp);
+void gm_followup(char* temp);
+void gm_delayres(char* temp);
 unsigned char Uuid[UUID_LEN] = { (unsigned char)0x24, (unsigned char)0x0a, (unsigned char)0x08, (unsigned char)0x71, (unsigned char)0xd0 };
 extern struct timespec ts;
 struct timespec ts2;
@@ -23,6 +28,7 @@ char *ptpmsg() {
 	
 	char *temp;
 	temp = (char *)malloc(124 * sizeof(char));
+	memset(temp, (char)0x00, 124);
 	// versionPTP この関数はPTPv1用
 	temp[0x00] = (char)0x00;
 	temp[0x01] = (char)0x01;
@@ -56,7 +62,14 @@ char *ptpmsg() {
 	// flags
 	temp[0x22] = (char)0x00;
 	temp[0x23] = ptpflags(false, false, true, true, false, false, false);
-	delay_req(temp);
+	// delay_req(temp);
+	if (mode == 0) {
+		gm_sync(temp);
+	} else if (mode == 1) {
+		gm_followup(temp);
+	} else if (mode == 3) {
+		gm_delayres(temp);
+	}
 	// clock_gettime(CLOCK_REALTIME, &ts2);
 	seqid++;
 	return temp;
@@ -112,6 +125,7 @@ void delay_req(char *temp) {
 }
 
 void gm_sync(char* temp) {
+	port = 319;
 	// messageType Event Message(1)
 	temp[0x14] = (char)0x01;
 	// control Sync Message(0)
@@ -148,6 +162,7 @@ void gm_sync(char* temp) {
 }
 
 void gm_followup(char* temp) {
+	port = 320;
 	// messageType General Message(2)
 	temp[0x14] = (char)0x02;
 	// control Follow_Up Message(2)
