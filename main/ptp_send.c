@@ -69,6 +69,7 @@ char *ptpmsg() {
 		gm_followup(temp);
 	} else if (mode == 3) {
 		gm_delayres(temp);
+		printf("delay response sent\n");
 	}
 	// clock_gettime(CLOCK_REALTIME, &ts2);
 	seqid++;
@@ -125,6 +126,7 @@ void delay_req(char *temp) {
 }
 
 void gm_sync(char* temp) {
+	printf("1\n");
 	port = 319;
 	// messageType Event Message(1)
 	temp[0x14] = (char)0x01;
@@ -162,6 +164,7 @@ void gm_sync(char* temp) {
 }
 
 void gm_followup(char* temp) {
+	printf("0\n");
 	port = 320;
 	// messageType General Message(2)
 	temp[0x14] = (char)0x02;
@@ -179,12 +182,13 @@ void gm_followup(char* temp) {
 	for (int i = 3; i >= 0; i--) temp[0x30 + (3 - i)] = (unsigned char)(ts.tv_nsec >> (i * 8)) % 256;
 	if (mode != 3) {
 		mode = 0;
-		usleep(200000);
+		usleep(500000);
 	}
 	grandmaster.SequenceId++;
 }
 
 void gm_delayres(char* temp) {
+	port = 320;
 	// messageType General Message(2)
 	temp[0x14] = (char)0x02;
 	// control Delay_Resp Message(3)

@@ -3,6 +3,7 @@
 #include <time.h>
 #include <unistd.h>
 #include <string.h>
+#include <pthread.h>
 #include "info.h"
 #include "esp_log.h"
 #include "freertos/FreeRTOS.h"
@@ -31,6 +32,7 @@ struct timespec receivetime;
 int sync_msg(unsigned char* msg);
 int followup_msg(unsigned char* msg);
 int delay_res(unsigned char* msg);
+void gm_delayreq(unsigned char* msg);
 unsigned long long int charToInt(int bytes, ...);
 extern int mode;
 // char subdomain[SDOMAIN_LEN];
@@ -46,16 +48,12 @@ int ptp_recv(unsigned char* msg) {
 	int ret = 0;
 	// versionPTP 0x00-0x01
 	// この関数はPTPv1用
-	if (!(msg[0x00] == (char)0 && msg[0x01] == (char)1)) {
-		// ESP_LOGE("PTP", "This is not a PTPv1 Message!");
+	if (msg[0x00] == (char)0 && msg[0x01] == (char)1) {
+		// printf("Received PTPv1 Message!\n");
+	} else {
+		// printf("This is not a PTPv1 Message!\n");
 		return -1;
 	}
-
-	/* for (int i = 0; i < 128; i++) {
-		printf("%.2x ", (unsigned int)msg[i]);
-		if (i % 8 == 7) printf("\n");
-	}
-	printf("\n"); */
 	// versionNetwork 0x02-0x03
 	// subdomain _DFLT
 	// subdomain[SDOMAIN_LEN];
@@ -64,10 +62,10 @@ int ptp_recv(unsigned char* msg) {
 	// messageType 0x14
 	int msgType = (int)msg[0x14];
 	// sourceCommunicationTechnology 0x15
-	/* if (msg[0x15] != 1) {
+	if (msg[0x15] != 1) {
 		printf("This works only in ethernet!\n");
 		return -1;
-	} */
+	}
 	// sourceUuid 0x16-0x1B
 	// sourcePort 0x1C-0x1D
 	srcPort = (int)charToInt(2, msg[0x1c], msg[0x1d]);
@@ -75,7 +73,7 @@ int ptp_recv(unsigned char* msg) {
 	srcSeqId = (int)charToInt(2, msg[0x1e], msg[0x1f]);
 	// control 0x20
 	// printf("msgType=%d, control=%d\n", msgType, (int)msg[0x20]);
-	if (msg[0x20] == 0x00 && msgType == 1) {
+	/* if (msg[0x20] == 0x00 && msgType == 1) {
 		// Sync Message
 		ret = sync_msg(msg);
 	} else if (msg[0x20] == 0x02 && msgType == 2) {
@@ -84,9 +82,9 @@ int ptp_recv(unsigned char* msg) {
 		ret = delay_res(msg);
 		sleep(1);
 		mode = 0;
-		port = 319;
-		close(sock);
-		create_multicast_ipv4_socket();
+	} */ if (msg[0x20] == 0x01 && msgType == 1) {
+		gm_delayreq(msg);
+		mode = 3;
 	} else {
 		// 未実装
 		// printf("未実装 messageType:%d control:%d\n", msgType, msg[0x20]);

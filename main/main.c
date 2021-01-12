@@ -24,6 +24,7 @@
 #include "lwip/sys.h"
 #include <lwip/netdb.h>
 #include "info.h"
+#include <pthread.h>
 
 /* The examples use simple configuration that you can set via
    project configuration.
@@ -60,6 +61,7 @@ void sendapp();
 extern struct clockinfo grandmaster;
 struct clockinfo gminit();
 int isinit = 0;
+void sendloop();
 
 // ÉÇÅ[Éh
 // 0: ë“ã@
@@ -357,10 +359,9 @@ static void mcast_example_task(void *pvParameters)
         // We know this inet_aton will pass because we did it above already
         inet6_aton(MULTICAST_IPV6_ADDR, &sdestv6.sin6_addr);
 #endif
-        while (true) {
-            sendapp();
-            ESP_LOGI(TAG, "Send Completed\n");
-        }
+
+        pthread_t pthread;
+        pthread_create(&pthread, NULL, &sendloop, NULL);
         // Loop waiting for UDP received, and sending UDP packets if we don't
         // see any.
         int err = 1;
@@ -624,4 +625,12 @@ struct clockinfo gminit() {
     temp.IsBoundaryClock = (unsigned char)0x01;
     isinit = 1;
     return temp;
+}
+
+void sendloop() {
+    while (true) {
+        sendapp();
+        ESP_LOGI(TAG, "Send Completed\n");
+        usleep(100000);
+    }
 }
