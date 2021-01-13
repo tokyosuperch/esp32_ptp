@@ -77,7 +77,7 @@ static int socket_add_ipv4_multicast_group(int sock, bool assign_source_if)
     esp_netif_ip_info_t ip_info = { 0 };
     err = esp_netif_get_ip_info(get_example_netif(), &ip_info);
     if (err != ESP_OK) {
-        ESP_LOGE(V4TAG, "Failed to get IP address info. Error 0x%x", err);
+        // ESP_LOGE(V4TAG, "Failed to get IP address info. Error 0x%x", err);
         goto err;
     }
     inet_addr_from_ip4addr(&iaddr, &ip_info.ip);
@@ -85,12 +85,12 @@ static int socket_add_ipv4_multicast_group(int sock, bool assign_source_if)
     // Configure multicast address to listen to
     err = inet_aton(MULTICAST_IPV4_ADDR, &imreq.imr_multiaddr.s_addr);
     if (err != 1) {
-        ESP_LOGE(V4TAG, "Configured IPV4 multicast address '%s' is invalid.", MULTICAST_IPV4_ADDR);
+        // ESP_LOGE(V4TAG, "Configured IPV4 multicast address '%s' is invalid.", MULTICAST_IPV4_ADDR);
         // Errors in the return value have to be negative
         err = -1;
         goto err;
     }
-    ESP_LOGI(TAG, "Configured IPV4 Multicast address %s", inet_ntoa(imreq.imr_multiaddr.s_addr));
+    // ESP_LOGI(TAG, "Configured IPV4 Multicast address %s", inet_ntoa(imreq.imr_multiaddr.s_addr));
     if (!IP_MULTICAST(ntohl(imreq.imr_multiaddr.s_addr))) {
         ESP_LOGW(V4TAG, "Configured IPV4 multicast address '%s' is not a valid multicast address. This will probably not work.", MULTICAST_IPV4_ADDR);
     }
@@ -101,7 +101,7 @@ static int socket_add_ipv4_multicast_group(int sock, bool assign_source_if)
         err = setsockopt(sock, IPPROTO_IP, IP_MULTICAST_IF, &iaddr,
                          sizeof(struct in_addr));
         if (err < 0) {
-            ESP_LOGE(V4TAG, "Failed to set IP_MULTICAST_IF. Error %d", errno);
+            // ESP_LOGE(V4TAG, "Failed to set IP_MULTICAST_IF. Error %d", errno);
             goto err;
         }
     }
@@ -109,7 +109,7 @@ static int socket_add_ipv4_multicast_group(int sock, bool assign_source_if)
     err = setsockopt(sock, IPPROTO_IP, IP_ADD_MEMBERSHIP,
                          &imreq, sizeof(struct ip_mreq));
     if (err < 0) {
-        ESP_LOGE(V4TAG, "Failed to set IP_ADD_MEMBERSHIP. Error %d", errno);
+        // ESP_LOGE(V4TAG, "Failed to set IP_ADD_MEMBERSHIP. Error %d", errno);
         goto err;
     }
 
@@ -127,7 +127,7 @@ int create_multicast_ipv4_socket(void)
 
     sock = socket(PF_INET, SOCK_DGRAM, IPPROTO_IP);
     if (sock < 0) {
-        ESP_LOGE(V4TAG, "Failed to create socket. Error %d", errno);
+        // ESP_LOGE(V4TAG, "Failed to create socket. Error %d", errno);
         return -1;
     }
 
@@ -137,7 +137,7 @@ int create_multicast_ipv4_socket(void)
     saddr.sin_addr.s_addr = htonl(INADDR_ANY);
     err = bind(sock, (struct sockaddr *)&saddr, sizeof(struct sockaddr_in));
     if (err < 0) {
-        ESP_LOGE(V4TAG, "Failed to bind socket. Error %d", errno);
+        // ESP_LOGE(V4TAG, "Failed to bind socket. Error %d", errno);
         goto err;
     }
 
@@ -146,7 +146,7 @@ int create_multicast_ipv4_socket(void)
     uint8_t ttl = MULTICAST_TTL;
     setsockopt(sock, IPPROTO_IP, IP_MULTICAST_TTL, &ttl, sizeof(uint8_t));
     if (err < 0) {
-        ESP_LOGE(V4TAG, "Failed to set IP_MULTICAST_TTL. Error %d", errno);
+        // ESP_LOGE(V4TAG, "Failed to set IP_MULTICAST_TTL. Error %d", errno);
         goto err;
     }
 
@@ -157,7 +157,7 @@ int create_multicast_ipv4_socket(void)
     err = setsockopt(sock, IPPROTO_IP, IP_MULTICAST_LOOP,
                      &loopback_val, sizeof(uint8_t));
     if (err < 0) {
-        ESP_LOGE(V4TAG, "Failed to set IP_MULTICAST_LOOP. Error %d", errno);
+        // ESP_LOGE(V4TAG, "Failed to set IP_MULTICAST_LOOP. Error %d", errno);
         goto err;
     }
 #endif
@@ -191,7 +191,7 @@ static int create_multicast_ipv6_socket(void)
 
     sock = socket(PF_INET6, SOCK_DGRAM, IPPROTO_IPV6);
     if (sock < 0) {
-        ESP_LOGE(V6TAG, "Failed to create socket. Error %d", errno);
+        // ESP_LOGE(V6TAG, "Failed to create socket. Error %d", errno);
         return -1;
     }
 
@@ -201,7 +201,7 @@ static int create_multicast_ipv6_socket(void)
     bzero(&saddr.sin6_addr.un, sizeof(saddr.sin6_addr.un));
     err = bind(sock, (struct sockaddr *)&saddr, sizeof(struct sockaddr_in6));
     if (err < 0) {
-        ESP_LOGE(V6TAG, "Failed to bind socket. Error %d", errno);
+        // ESP_LOGE(V6TAG, "Failed to bind socket. Error %d", errno);
         goto err;
     }
 
@@ -218,7 +218,7 @@ static int create_multicast_ipv6_socket(void)
     err = esp_netif_get_ip6_linklocal(EXAMPLE_INTERFACE, (esp_ip6_addr_t*)&if_ipaddr);
     inet6_addr_from_ip6addr(&if_inaddr, &if_ipaddr);
     if (err != ESP_OK) {
-        ESP_LOGE(V6TAG, "Failed to get IPV6 LL address. Error 0x%x", err);
+        // ESP_LOGE(V6TAG, "Failed to get IPV6 LL address. Error 0x%x", err);
         goto err;
     }
 #endif // LISTEN_ALL_IF
@@ -226,13 +226,13 @@ static int create_multicast_ipv6_socket(void)
     // search for netif index
     netif_index = esp_netif_get_netif_impl_index(EXAMPLE_INTERFACE);
     if(netif_index < 0) {
-        ESP_LOGE(V6TAG, "Failed to get netif index");
+        // ESP_LOGE(V6TAG, "Failed to get netif index");
         goto err;
     }
     // Assign the multicast source interface, via its IP
     err = setsockopt(sock, IPPROTO_IPV6, IPV6_MULTICAST_IF, &netif_index,sizeof(uint8_t));
     if (err < 0) {
-        ESP_LOGE(V6TAG, "Failed to set IPV6_MULTICAST_IF. Error %d", errno);
+        // ESP_LOGE(V6TAG, "Failed to set IPV6_MULTICAST_IF. Error %d", errno);
         goto err;
     }
 
@@ -240,7 +240,7 @@ static int create_multicast_ipv6_socket(void)
     uint8_t ttl = MULTICAST_TTL;
     setsockopt(sock, IPPROTO_IPV6, IPV6_MULTICAST_HOPS, &ttl, sizeof(uint8_t));
     if (err < 0) {
-        ESP_LOGE(V6TAG, "Failed to set IPV6_MULTICAST_HOPS. Error %d", errno);
+        // ESP_LOGE(V6TAG, "Failed to set IPV6_MULTICAST_HOPS. Error %d", errno);
         goto err;
     }
 
@@ -251,7 +251,7 @@ static int create_multicast_ipv6_socket(void)
     err = setsockopt(sock, IPPROTO_IPV6, IPV6_MULTICAST_LOOP,
                      &loopback_val, sizeof(uint8_t));
     if (err < 0) {
-        ESP_LOGE(V6TAG, "Failed to set IPV6_MULTICAST_LOOP. Error %d", errno);
+        // ESP_LOGE(V6TAG, "Failed to set IPV6_MULTICAST_LOOP. Error %d", errno);
         goto err;
     }
 #endif
@@ -262,10 +262,10 @@ static int create_multicast_ipv6_socket(void)
     // Configure multicast address to listen to
     err = inet6_aton(MULTICAST_IPV6_ADDR, &v6imreq.ipv6mr_multiaddr);
     if (err != 1) {
-        ESP_LOGE(V6TAG, "Configured IPV6 multicast address '%s' is invalid.", MULTICAST_IPV6_ADDR);
+        // ESP_LOGE(V6TAG, "Configured IPV6 multicast address '%s' is invalid.", MULTICAST_IPV6_ADDR);
         goto err;
     }
-    ESP_LOGI(TAG, "Configured IPV6 Multicast address %s", inet6_ntoa(v6imreq.ipv6mr_multiaddr));
+    // ESP_LOGI(TAG, "Configured IPV6 Multicast address %s", inet6_ntoa(v6imreq.ipv6mr_multiaddr));
     ip6_addr_t multi_addr;
     inet6_addr_to_ip6addr(&multi_addr, &v6imreq.ipv6mr_multiaddr);
     if (!ip6_addr_ismulticast(&multi_addr)) {
@@ -276,7 +276,7 @@ static int create_multicast_ipv6_socket(void)
     err = setsockopt(sock, IPPROTO_IPV6, IPV6_ADD_MEMBERSHIP,
                      &v6imreq, sizeof(struct ipv6_mreq));
     if (err < 0) {
-        ESP_LOGE(V6TAG, "Failed to set IPV6_ADD_MEMBERSHIP. Error %d", errno);
+        // ESP_LOGE(V6TAG, "Failed to set IPV6_ADD_MEMBERSHIP. Error %d", errno);
         goto err;
     }
 #endif
@@ -296,10 +296,10 @@ static int create_multicast_ipv6_socket(void)
 #endif
     err = setsockopt(sock, IPPROTO_IPV6, IPV6_V6ONLY, &only, sizeof(int));
     if (err < 0) {
-        ESP_LOGE(V6TAG, "Failed to set IPV6_V6ONLY. Error %d", errno);
+        // ESP_LOGE(V6TAG, "Failed to set IPV6_V6ONLY. Error %d", errno);
         goto err;
     }
-    ESP_LOGI(TAG, "Socket set IPV6-only");
+    // ESP_LOGI(TAG, "Socket set IPV6-only");
 
     // All set, socket is configured for sending and receiving
     return sock;
@@ -318,12 +318,12 @@ static void mcast_example_task(void *pvParameters)
 #ifdef CONFIG_EXAMPLE_IPV4_ONLY
         sock = create_multicast_ipv4_socket();
         if (sock < 0) {
-            ESP_LOGE(TAG, "Failed to create IPv4 multicast socket");
+            // ESP_LOGE(TAG, "Failed to create IPv4 multicast socket");
         }
 #else
         sock = create_multicast_ipv6_socket();
         if (sock < 0) {
-            ESP_LOGE(TAG, "Failed to create IPv6 multicast socket");
+            // ESP_LOGE(TAG, "Failed to create IPv6 multicast socket");
         }
 #endif
 
@@ -366,7 +366,7 @@ static void mcast_example_task(void *pvParameters)
 
             int s = select(sock + 1, &rfds, NULL, NULL, &tv);
             if (s < 0) {
-                ESP_LOGE(TAG, "Select failed: errno %d", errno);
+                // ESP_LOGE(TAG, "Select failed: errno %d", errno);
                 err = -1;
                 break;
             }
@@ -381,7 +381,7 @@ static void mcast_example_task(void *pvParameters)
                     int len = recvfrom(sock, recvbuf, sizeof(recvbuf)-1, 0,
                                        (struct sockaddr *)&raddr, &socklen);
                     if (len < 0) {
-                        ESP_LOGE(TAG, "multicast recvfrom failed: errno %d", errno);
+                        // ESP_LOGE(TAG, "multicast recvfrom failed: errno %d", errno);
                         err = -1;
                         break;
                     }
@@ -398,10 +398,10 @@ static void mcast_example_task(void *pvParameters)
                         inet6_ntoa_r(raddr.sin6_addr, raddr_name, sizeof(raddr_name)-1);
                     }
 #endif
-                    // ESP_LOGI(TAG, "received %d bytes from %s:", len, raddr_name);
+                    // // ESP_LOGI(TAG, "received %d bytes from %s:", len, raddr_name);
 
                     recvbuf[len] = 0; // Null-terminate whatever we received and treat like a string...
-                    // ESP_LOGI(TAG, "%s", recvbuf);
+                    // // ESP_LOGI(TAG, "%s", recvbuf);
                     ptp_recv(&recvbuf);
                 }
             }
@@ -413,7 +413,7 @@ static void mcast_example_task(void *pvParameters)
                 char addrbuf[32] = { 0 };
                 int len = snprintf(sendbuf, sizeof(sendbuf), sendfmt, send_count++);
                 if (len > sizeof(sendbuf)) {
-                    ESP_LOGE(TAG, "Overflowed multicast sendfmt buffer!!");
+                    // ESP_LOGE(TAG, "Overflowed multicast sendfmt buffer!!");
                     send_count = 0;
                     err = -1;
                     break;
@@ -438,26 +438,26 @@ static void mcast_example_task(void *pvParameters)
                                       &hints,
                                       &res);
                 if (err < 0) {
-                    ESP_LOGE(TAG, "getaddrinfo() failed for IPV4 destination address. error: %d", err);
+                    // ESP_LOGE(TAG, "getaddrinfo() failed for IPV4 destination address. error: %d", err);
                     break;
                 }
                 if (res == 0) {
-                    ESP_LOGE(TAG, "getaddrinfo() did not return any addresses");
+                    // ESP_LOGE(TAG, "getaddrinfo() did not return any addresses");
                     break;
                 }
 #ifdef CONFIG_EXAMPLE_IPV4_ONLY
                 ((struct sockaddr_in *)res->ai_addr)->sin_port = htons(UDP_PORT);
                 inet_ntoa_r(((struct sockaddr_in *)res->ai_addr)->sin_addr, addrbuf, sizeof(addrbuf)-1);
-                ESP_LOGI(TAG, "Sending to IPV4 multicast address %s:%d...",  addrbuf, UDP_PORT);
+                // ESP_LOGI(TAG, "Sending to IPV4 multicast address %s:%d...",  addrbuf, UDP_PORT);
 #else
                 ((struct sockaddr_in6 *)res->ai_addr)->sin6_port = htons(UDP_PORT);
                 inet6_ntoa_r(((struct sockaddr_in6 *)res->ai_addr)->sin6_addr, addrbuf, sizeof(addrbuf)-1);
-                ESP_LOGI(TAG, "Sending to IPV6 (V4 mapped) multicast address %s port %d (%s)...",  addrbuf, UDP_PORT, CONFIG_EXAMPLE_MULTICAST_IPV4_ADDR);
+                // ESP_LOGI(TAG, "Sending to IPV6 (V4 mapped) multicast address %s port %d (%s)...",  addrbuf, UDP_PORT, CONFIG_EXAMPLE_MULTICAST_IPV4_ADDR);
 #endif
                 err = sendto(sock, sendbuf, len, 0, res->ai_addr, res->ai_addrlen);
                 freeaddrinfo(res);
                 if (err < 0) {
-                    ESP_LOGE(TAG, "IPV4 sendto failed. errno: %d", errno);
+                    // ESP_LOGE(TAG, "IPV4 sendto failed. errno: %d", errno);
                     break;
                 }
 #endif
@@ -469,25 +469,25 @@ static void mcast_example_task(void *pvParameters)
                                   &hints,
                                   &res);
                 if (err < 0) {
-                    ESP_LOGE(TAG, "getaddrinfo() failed for IPV6 destination address. error: %d", err);
+                    // ESP_LOGE(TAG, "getaddrinfo() failed for IPV6 destination address. error: %d", err);
                     break;
                 }
 
                 struct sockaddr_in6 *s6addr = (struct sockaddr_in6 *)res->ai_addr;
                 s6addr->sin6_port = htons(UDP_PORT);
                 inet6_ntoa_r(s6addr->sin6_addr, addrbuf, sizeof(addrbuf)-1);
-                ESP_LOGI(TAG, "Sending to IPV6 multicast address %s port %d...",  addrbuf, UDP_PORT);
+                // ESP_LOGI(TAG, "Sending to IPV6 multicast address %s port %d...",  addrbuf, UDP_PORT);
                 err = sendto(sock, sendbuf, len, 0, res->ai_addr, res->ai_addrlen);
                 freeaddrinfo(res);
                 if (err < 0) {
-                    ESP_LOGE(TAG, "IPV6 sendto failed. errno: %d", errno);
+                    // ESP_LOGE(TAG, "IPV6 sendto failed. errno: %d", errno);
                     break;
                 }
 #endif
             } */
         }
 
-        ESP_LOGE(TAG, "Shutting down socket and restarting...");
+        // ESP_LOGE(TAG, "Shutting down socket and restarting...");
         shutdown(sock, 0);
         close(sock);
     }
@@ -504,7 +504,7 @@ void sendapp() { // s == 0
     int len = 124;
     memcpy(sendbuf, ptpmsg(), 124);
     /* if (len > sizeof(sendbuf)) {
-        ESP_LOGE(TAG, "Overflowed multicast sendfmt buffer!!");
+        // ESP_LOGE(TAG, "Overflowed multicast sendfmt buffer!!");
         send_count = 0;
         err = -1;
         break;
@@ -529,26 +529,26 @@ void sendapp() { // s == 0
         &hints,
         &res);
     if (err < 0) {
-        ESP_LOGE(TAG, "getaddrinfo() failed for IPV4 destination address. error: %d", err);
+        // ESP_LOGE(TAG, "getaddrinfo() failed for IPV4 destination address. error: %d", err);
         return;
     }
     if (res == 0) {
-        ESP_LOGE(TAG, "getaddrinfo() did not return any addresses");
+        // ESP_LOGE(TAG, "getaddrinfo() did not return any addresses");
         return;
     }
 #ifdef CONFIG_EXAMPLE_IPV4_ONLY
     ((struct sockaddr_in*)res->ai_addr)->sin_port = htons(port);
     inet_ntoa_r(((struct sockaddr_in*)res->ai_addr)->sin_addr, addrbuf, sizeof(addrbuf) - 1);
-    // ESP_LOGI(TAG, "Sending to IPV4 multicast address %s:%d...", addrbuf, port);
+    // // ESP_LOGI(TAG, "Sending to IPV4 multicast address %s:%d...", addrbuf, port);
 #else
     ((struct sockaddr_in6*)res->ai_addr)->sin6_port = htons(port);
     inet6_ntoa_r(((struct sockaddr_in6*)res->ai_addr)->sin6_addr, addrbuf, sizeof(addrbuf) - 1);
-    ESP_LOGI(TAG, "Sending to IPV6 (V4 mapped) multicast address %s port %d (%s)...", addrbuf, port, CONFIG_EXAMPLE_MULTICAST_IPV4_ADDR);
+    // ESP_LOGI(TAG, "Sending to IPV6 (V4 mapped) multicast address %s port %d (%s)...", addrbuf, port, CONFIG_EXAMPLE_MULTICAST_IPV4_ADDR);
 #endif
     err = sendto(sock, sendbuf, len, 0, res->ai_addr, res->ai_addrlen);
     freeaddrinfo(res);
     if (err < 0) {
-        ESP_LOGE(TAG, "IPV4 sendto failed. errno: %d", errno);
+        // ESP_LOGE(TAG, "IPV4 sendto failed. errno: %d", errno);
         return;
     }
 #endif
@@ -560,18 +560,18 @@ void sendapp() { // s == 0
         &hints,
         &res);
     if (err < 0) {
-        ESP_LOGE(TAG, "getaddrinfo() failed for IPV6 destination address. error: %d", err);
+        // ESP_LOGE(TAG, "getaddrinfo() failed for IPV6 destination address. error: %d", err);
         return;
     }
 
     struct sockaddr_in6* s6addr = (struct sockaddr_in6*)res->ai_addr;
     s6addr->sin6_port = htons(port);
     inet6_ntoa_r(s6addr->sin6_addr, addrbuf, sizeof(addrbuf) - 1);
-    ESP_LOGI(TAG, "Sending to IPV6 multicast address %s port %d...", addrbuf, port);
+    // ESP_LOGI(TAG, "Sending to IPV6 multicast address %s port %d...", addrbuf, port);
     err = sendto(sock, sendbuf, len, 0, res->ai_addr, res->ai_addrlen);
     freeaddrinfo(res);
     if (err < 0) {
-        ESP_LOGE(TAG, "IPV6 sendto failed. errno: %d", errno);
+        // ESP_LOGE(TAG, "IPV6 sendto failed. errno: %d", errno);
         return;
     }
 #endif

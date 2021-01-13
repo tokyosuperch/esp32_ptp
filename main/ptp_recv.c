@@ -37,6 +37,7 @@ extern int mode;
 struct clockinfo grandmaster;
 extern void sendapp(); 
 extern int create_multicast_ipv4_socket();
+unsigned int lastSeqId = UINT_MAX;
 
 int ptp_recv(unsigned char* msg) {
 
@@ -46,7 +47,7 @@ int ptp_recv(unsigned char* msg) {
 	// versionPTP 0x00-0x01
 	// この関数はPTPv1用
 	if (!(msg[0x00] == (char)0 && msg[0x01] == (char)1)) {
-		// ESP_LOGE("PTP", "This is not a PTPv1 Message!");
+		// // ESP_LOGE("PTP", "This is not a PTPv1 Message!");
 		return -1;
 	}
 
@@ -70,8 +71,6 @@ int ptp_recv(unsigned char* msg) {
 	// sourceUuid 0x16-0x1B
 	// sourcePort 0x1C-0x1D
 	srcPort = (int)charToInt(2, msg[0x1c], msg[0x1d]);
-	// sequenceId 0x1E-0x1F
-	srcSeqId = (int)charToInt(2, msg[0x1e], msg[0x1f]);
 	// control 0x20
 	// printf("msgType=%d, control=%d\n", msgType, (int)msg[0x20]);
 	if (msg[0x20] == 0x00 && msgType == 1) {
@@ -79,6 +78,12 @@ int ptp_recv(unsigned char* msg) {
 		ret = sync_msg(msg);
 	} else if (msg[0x20] == 0x02 && msgType == 2) {
 		ret = followup_msg(msg);
+		if (ret != 0) {
+			mode = 0;
+			port = 319;
+			close(sock);
+			create_multicast_ipv4_socket();
+		}
 	} else if (msg[0x20] == 0x03 && msgType == 2) {
 		ret = delay_res(msg);
 		sleep(1);
@@ -95,6 +100,8 @@ int ptp_recv(unsigned char* msg) {
 }
 
 int sync_msg(unsigned char* msg) {
+	// sequenceId 0x1E-0x1F
+	srcSeqId = (int)charToInt(2, msg[0x1e], msg[0x1f]);
 	// printf("Received Sync Message\n");
 	if (mode != 0) return -1;
 	// sourceUuid 0x16-0x1B
@@ -150,10 +157,15 @@ int followup_msg(unsigned char* msg) {
 	// printf("Received Follow_Up Message\n");
 	for (int i = 0; i < UUID_LEN; i++) {
 		if (msg[i + 0x16] != srcUuid[i]) {
-			ESP_LOGE("PTP", "%d, %d Missmatch\n", (int)msg[i + 0x16], (int)srcUuid[i]);
+			// ESP_LOGE("PTP", "%d, %d Missmatch\n", (int)msg[i + 0x16], (int)srcUuid[i]);
+			return -1;
+		}
+		if (srcSeqId + 1 != (int)charToInt(2, msg[0x1e], msg[0x1f])) {
+			// ESP_LOGE("PTP", "%d, %d sequenceId Missmatch\n", (int)srcSeqId, (int)charToInt(2, msg[0x1e], msg[0x1f]));
 			return -1;
 		}
 	}
+	// printf("%d\n", (int)charToInt(2, msg[0x1e], msg[0x1f]));
 	mode = 2;
 	port = 319;
 	close(sock);
@@ -201,11 +213,14 @@ int delay_res(unsigned char* msg) {
 	double meanPathDelay = (((t1nsec + t3nsec) / 2) * 0.000000001) + ((t1sec + t3sec) / 2);
 	double offset = (((t1nsec - t3nsec) / 2) * 0.000000001) + ((t1sec - t3sec) / 2);
 	// printf("\nSyncronizing clock complete!\n");
-	printf("%.9f,", t_ms);
-	printf("%.9f,", t_sm);
-	printf("%.9f,", meanPathDelay);
-	printf("%.9f\n", offset);
-	fflush(stdout);
+	if (lastSeqId < srcSeqId) {
+		printf("%.9f,", t_ms);
+		printf("%.9f,", t_sm);
+		printf("%.9f,", meanPathDelay);
+		printf("%.9f\n", offset);
+		fflush(stdout);
+	}
+	lastSeqId = srcSeqId;
 	return 0;
 }
 
